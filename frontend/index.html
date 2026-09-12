@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -198,6 +198,13 @@
             <span class="step-indicator">Step 1: Upload or Record Noise &bull; Step 2: Pick Your Vibe &bull; Step 3: Create Music</span>
           </div>
 
+          <!-- Onboarding Tip Banner: rotating hints to help new users explore -->
+          <div class="explore-tip-banner" id="exploreTipBanner" role="status" aria-live="polite">
+            <span class="explore-tip-icon">🎛️</span>
+            <span class="explore-tip-text" id="exploreTipText">You're not stuck on one style! Switch genres, pick any archetype, or let Auto-Cycle surprise you — every run sounds completely different.</span>
+            <button type="button" class="explore-tip-dismiss" id="exploreTipDismiss" aria-label="Dismiss tip">Got it ✕</button>
+          </div>
+
           <div class="studio-cards-row">
             <!-- Left Card: Sound Input -->
             <div class="studio-card input-panel">
@@ -317,20 +324,22 @@
                           </svg>
                         </button>
                         <div class="info-tooltip-popover energy-info-popover" role="tooltip">
-                          <div class="popover-title">Category Styles</div>
-                          <div class="popover-item">Filtered strictly to your selected category above (e.g. Pop shows only Pop styles).</div>
-                          <div class="popover-item">Change <strong>"What should your noise become?"</strong> to browse archetypes for other genres.</div>
+                          <div class="popover-title">Sound Style Archetypes</div>
+                          <div class="popover-item"><strong>🔀 Switch Archetypes Anytime:</strong> You're never locked in! Switch between distinct sound archetypes in this list (or select Auto-Cycle) to change synths, basslines, and grooves.</div>
+                          <div class="popover-item"><strong>🎲 Auto-Cycle:</strong> Automatically rolls a fresh, unplayed sound archetype on each run so you can discover them all.</div>
+                          <div class="popover-item"><strong>🎵 Switch Genres Above:</strong> Changing <em>"What should your noise become?"</em> unlocks even more archetypes across Rap, Hip Hop, Trap, Minimal, Ambient, etc.</div>
                         </div>
                       </div>
                     </div>
-                    <span class="hint" id="styleCountHint">(Pop Styles)</span>
+                    <span class="hint" id="styleCountHint">(Pop Styles &bull; Switch anytime)</span>
                   </div>
                   <div class="select-wrapper">
                     <select id="styleSelect" class="spotify-select">
                       <option value="" selected>🎲 Auto-Cycle (Surprise Me / Non-Repeating)</option>
                     </select>
                   </div>
-                  <span class="energy-helper-note" id="styleHelperNote">✨ Auto-cycles unplayed styles dynamically on each roll</span>
+                  <span class="energy-helper-note" id="styleHelperNote">✨ Auto-cycles unplayed styles dynamically on each roll &bull; or pick any archetype</span>
+                  <span class="style-explore-nudge" id="styleExploreNudge">🔀 Feel free to switch archetypes anytime — explore different sounds, tempos &amp; vibes!</span>
                 </div>
 
                 <div class="form-row">
@@ -420,6 +429,7 @@
                   </button>
                   <p class="generate-disclaimer">
                     <span>Transforms your noise into a full track</span>
+                    <span class="disclaimer-explore-hint" id="disclaimerExploreHint">🎲 Same noise, totally different result — change genre or style and hit Create again!</span>
                   </p>
                 </div>
               </div>
@@ -1182,3 +1192,4 @@
 </body>
 
 </html>
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * THE UNNECESSARY FM — Spotify-Inspired Modern Audio Studio
  * Procedural Music Generation Logic
  * Team MiNa • Midhun K M & Nayana P • TinkerHub Useless Projects 3.0
@@ -109,36 +109,83 @@
     }
 
     if (styleCountHint) {
-      styleCountHint.textContent = `(${currentGenreStyles.length} ${genreClean} Styles)`;
-    }
-
-    if (styleHelperNote) {
-      styleHelperNote.textContent = `✨ Auto-cycles unplayed ${genreClean} styles dynamically on each roll`;
+      const activeText = (!styleSelect.value) ? 'Auto-Cycle active' : 'Switch anytime';
+      styleCountHint.textContent = `(${currentGenreStyles.length} ${genreClean} Styles • ${activeText})`;
     }
 
     if (currentGenreStyles.length > 0) {
       currentGenreStyles.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = `${s.display_name} (${s.bpm_default} BPM)`;
+        const isDefaultTag = (targetGenre === 'pop' && s.id === 'ladygaga_redone_electro') ? ' [Plays 1st on Auto-Cycle]' : '';
+        opt.textContent = `${s.display_name} (${s.bpm_default} BPM)${isDefaultTag}`;
         styleSelect.appendChild(opt);
       });
     }
 
-    // Only re-select if the value exists in this genre's filtered list
+    // Default to Auto-Cycle by rule; keep user selection if explicitly made
     if (currentVal && Array.from(styleSelect.options).some(o => o.value === currentVal)) {
       styleSelect.value = currentVal;
+    } else {
+      styleSelect.value = '';
+    }
+
+    updateStyleHelperNote();
+  }
+
+  function updateStyleHelperNote() {
+    if (!styleSelect) return;
+    const currentVal = styleSelect.value;
+    const noteEl = document.getElementById('styleHelperNote');
+    const nudgeEl = document.getElementById('styleExploreNudge');
+    const countHint = document.getElementById('styleCountHint');
+
+    let genreClean = 'Pop';
+    const targetGenre = (beatSelect ? beatSelect.value : 'pop').toLowerCase();
+    if (beatSelect && beatSelect.selectedOptions && beatSelect.selectedOptions[0]) {
+      const fullText = beatSelect.selectedOptions[0].textContent;
+      genreClean = fullText.replace(/^[\p{Emoji}\s✨🥁🎺🎸🎷🎹⚡🪐🔥🎧🧩🌌🎵]+/gu, '').split('(')[0].trim() || 'Genre';
+    }
+
+    if (countHint && countHint.textContent.includes('Styles')) {
+      const currentGenreStyles = allAvailableStyles.filter(s => s.genre === targetGenre);
+      const activeText = (!currentVal) ? 'Auto-Cycle active' : 'Switch anytime';
+      countHint.textContent = `(${currentGenreStyles.length} ${genreClean} Styles • ${activeText})`;
+    }
+
+    if (noteEl) {
+      if (!currentVal) {
+        if (targetGenre === 'pop') {
+          noteEl.textContent = `🎲 Auto-Cycle: Always plays Electro-Pop Supersaw first, then randomizes unplayed styles — switch anytime!`;
+        } else {
+          noteEl.textContent = `🎲 Auto-cycles unplayed ${genreClean} styles on each roll — switch to any archetype anytime!`;
+        }
+      } else {
+        const selectedOpt = styleSelect.options[styleSelect.selectedIndex];
+        const optLabel = selectedOpt ? selectedOpt.textContent.replace(/\s*\[Plays 1st on Auto-Cycle\]|\s*\[Default\]\s*/g, '').trim() : '';
+        noteEl.textContent = `🎛️ Active Archetype: ${optLabel} — you can freely switch styles or choose Auto-Cycle!`;
+      }
+    }
+
+    if (nudgeEl) {
+      if (!currentVal) {
+        nudgeEl.textContent = `🔀 Auto-Cycle active! Or choose any specific archetype below to switch sounds & tempos.`;
+      } else {
+        nudgeEl.textContent = `🔀 Feel free to switch archetypes anytime — explore different sounds, tempos & vibes!`;
+      }
     }
   }
 
   if (styleSelect) {
     styleSelect.addEventListener('change', () => {
       const chosenId = styleSelect.value;
-      if (!chosenId) return;
-      const match = allAvailableStyles.find(s => s.id === chosenId);
-      if (match && beatSelect && beatSelect.value !== match.genre) {
-        beatSelect.value = match.genre;
+      if (chosenId) {
+        const match = allAvailableStyles.find(s => s.id === chosenId);
+        if (match && beatSelect && beatSelect.value !== match.genre) {
+          beatSelect.value = match.genre;
+        }
       }
+      updateStyleHelperNote();
     });
   }
 
@@ -170,6 +217,60 @@
 
   // Load styles immediately on page init
   loadAvailableStyles();
+
+  // ── EXPLORE TIP BANNER: rotating hints + dismiss for new users ──────────────
+  (function initExploreTipBanner() {
+    const banner = document.getElementById('exploreTipBanner');
+    const tipText = document.getElementById('exploreTipText');
+    const dismissBtn = document.getElementById('exploreTipDismiss');
+    if (!banner) return;
+
+    // Skip if user already dismissed this session
+    if (sessionStorage.getItem('exploreTipDismissed')) {
+      banner.classList.add('dismissed');
+      return;
+    }
+
+    const tips = [
+      "You're not stuck on one style! Switch genres, pick any archetype, or let Auto-Cycle surprise you — every run sounds completely different.",
+      "Try all 8 genres: Pop, Rap/Electro, Hip Hop, Trap, Minimal, Rhythmic, Light Percussion, and Ambient — the same noise becomes a new song each time!",
+      "🎲 Auto-Cycle picks an unplayed style on every run, so just keep hitting Create and explore the full palette!",
+      "Each genre has multiple sound archetypes (e.g. Boom-Bap, Crunk Club, Nu-Disco, Supersaw). Pick one from the dropdown or let Auto-Cycle tour them all.",
+      "Hit Create with the same recording but a different genre — you'll be surprised how wild the transformation changes!",
+      "Tip: change Energy & Pace to 'High Dynamics' for festival-ready bangers, or 'Subtle & Ambient' for chilled vibes.",
+    ];
+
+    let tipIdx = 0;
+    let tipTimer = null;
+
+    function rotateTip() {
+      if (!tipText || banner.classList.contains('dismissed')) return;
+      tipText.classList.add('fading');
+      setTimeout(() => {
+        tipIdx = (tipIdx + 1) % tips.length;
+        tipText.textContent = tips[tipIdx];
+        tipText.classList.remove('fading');
+      }, 260);
+    }
+
+    tipTimer = setInterval(rotateTip, 5000);
+
+    function dismissBanner() {
+      banner.classList.add('dismissed');
+      sessionStorage.setItem('exploreTipDismissed', '1');
+      if (tipTimer) clearInterval(tipTimer);
+    }
+
+    if (dismissBtn) dismissBtn.addEventListener('click', dismissBanner);
+
+    // Auto-dismiss banner once user starts interacting with the studio controls
+    const autoHideTargets = ['beatSelect', 'styleSelect', 'energySelect', 'btnGenerate', 'btnRecord', 'dropZone'];
+    autoHideTargets.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', dismissBanner, { once: true });
+    });
+  })();
+  // ────────────────────────────────────────────────────────────────────────────
 
 
   // Sound Guide Tooltip Toggle (supports mobile tap & keyboard Escape)
@@ -1398,7 +1499,15 @@
     return (activePlayingTarget === 'source') ? sourceAudioPlayer : resultAudioPlayer;
   }
 
+  let lastAudioTime = 0;
+  let lastSyncTimestamp = performance.now();
+  let lastFormattedCur = '';
+  let lastFormattedDur = '';
+
   function startPlayheadRAF() {
+    const p = getActiveAudioPlayer();
+    lastAudioTime = p.currentTime || 0;
+    lastSyncTimestamp = performance.now();
     if (!isPlayheadRafRunning) {
       isPlayheadRafRunning = true;
       rafId = requestAnimationFrame(updatePlayheadRAF);
@@ -1417,7 +1526,22 @@
     if (!isPlayheadRafRunning) return;
 
     const p = getActiveAudioPlayer();
-    const cur = p.currentTime || 0;
+    const now = performance.now();
+    const rawCur = p.currentTime || 0;
+
+    // Detect when audio element clock advances (~4Hz - 8Hz)
+    if (Math.abs(rawCur - lastAudioTime) > 0.005 || p.paused) {
+      lastAudioTime = rawCur;
+      lastSyncTimestamp = now;
+    }
+
+    // Buttery-smooth 60fps/120fps high-resolution interpolation between coarse audio ticks
+    let smoothCur = rawCur;
+    if (!p.paused) {
+      const elapsedSec = ((now - lastSyncTimestamp) / 1000) * (p.playbackRate || 1.0);
+      smoothCur = lastAudioTime + elapsedSec;
+    }
+
     const candDur = (currentResultData && currentResultData.candidates && currentResultData.candidates[activeCandidateIndex])
       ? currentResultData.candidates[activeCandidateIndex].duration
       : selectedDuration;
@@ -1425,20 +1549,33 @@
       ? candDur
       : ((currentResultData && currentResultData.source && currentResultData.source.duration) ? currentResultData.source.duration : 10);
     const dur = (p.duration && !isNaN(p.duration) && p.duration > 0) ? p.duration : fallbackDur;
-    const pct = dur > 0 ? Math.max(0, Math.min(100, (cur / dur) * 100)) : 0;
+    smoothCur = Math.max(0, Math.min(dur, smoothCur));
+    const pct = dur > 0 ? Math.max(0, Math.min(100, (smoothCur / dur) * 100)) : 0;
+    const pctStr = `${pct.toFixed(2)}%`;
 
     if (!isScrubbing) {
-      if (playerSliderFill) playerSliderFill.style.width = `${pct}%`;
-      if (playerSliderThumb) playerSliderThumb.style.left = `${pct}%`;
-      if (playerCurrentTime) playerCurrentTime.textContent = formatTime(cur);
-      if (playerTotalDuration) playerTotalDuration.textContent = formatTime(dur);
+      if (playerSliderFill) playerSliderFill.style.width = pctStr;
+      if (playerSliderThumb) playerSliderThumb.style.left = pctStr;
+
+      // Layout thrashing prevention: only mutate textContent once per second when string changes!
+      const curStr = formatTime(smoothCur);
+      const durStr = formatTime(dur);
+
+      if (curStr !== lastFormattedCur) {
+        lastFormattedCur = curStr;
+        if (playerCurrentTime) playerCurrentTime.textContent = curStr;
+      }
+      if (durStr !== lastFormattedDur) {
+        lastFormattedDur = durStr;
+        if (playerTotalDuration) playerTotalDuration.textContent = durStr;
+      }
 
       if (activePlayingTarget === 'result') {
-        if (resPlayhead) resPlayhead.style.left = `${pct}%`;
-        if (resTimeDisplay) resTimeDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+        if (resPlayhead) resPlayhead.style.left = pctStr;
+        if (resTimeDisplay) resTimeDisplay.textContent = `${curStr} / ${durStr}`;
       } else {
-        if (srcPlayhead) srcPlayhead.style.left = `${pct}%`;
-        if (srcTimeDisplay) srcTimeDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+        if (srcPlayhead) srcPlayhead.style.left = pctStr;
+        if (srcTimeDisplay) srcTimeDisplay.textContent = `${curStr} / ${durStr}`;
       }
     }
 
@@ -1467,8 +1604,27 @@
     }
   });
 
+  // Audio lifecycle listeners for jitter-free playhead & UI synchronization
   sourceAudioPlayer.addEventListener('play', startPlayheadRAF);
   resultAudioPlayer.addEventListener('play', startPlayheadRAF);
+
+  sourceAudioPlayer.addEventListener('pause', () => {
+    if (resultAudioPlayer.paused) stopPlayheadRAF();
+    updatePlayIcons(false, 'source');
+  });
+  resultAudioPlayer.addEventListener('pause', () => {
+    if (sourceAudioPlayer.paused) stopPlayheadRAF();
+    updatePlayIcons(false, 'result');
+  });
+
+  sourceAudioPlayer.addEventListener('seeking', () => {
+    lastAudioTime = sourceAudioPlayer.currentTime || 0;
+    lastSyncTimestamp = performance.now();
+  });
+  resultAudioPlayer.addEventListener('seeking', () => {
+    lastAudioTime = resultAudioPlayer.currentTime || 0;
+    lastSyncTimestamp = performance.now();
+  });
 
   if (btnPlaySource) {
     btnPlaySource.addEventListener('click', () => {
@@ -1858,43 +2014,73 @@
     });
   }
 
-  // Pointer Drag-to-Scrub on Player Progress Bar
+  // Pointer Drag-to-Scrub on Player Progress Bar (Glitch-Free & Pop-Free)
   if (playerSliderTrack) {
-    const handleScrubSeek = (e) => {
-      const rect = playerSliderTrack.getBoundingClientRect();
-      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    let pendingScrubPos = 0;
+
+    const updateScrubVisuals = (pos) => {
+      const pct = Math.max(0, Math.min(100, pos * 100));
+      const pctStr = `${pct.toFixed(2)}%`;
+      if (playerSliderFill) playerSliderFill.style.width = pctStr;
+      if (playerSliderThumb) playerSliderThumb.style.left = pctStr;
+      if (activePlayingTarget === 'result' && resPlayhead) resPlayhead.style.left = pctStr;
+      if (activePlayingTarget === 'source' && srcPlayhead) srcPlayhead.style.left = pctStr;
+
       const p = getActiveAudioPlayer();
-      if (p.duration) {
-        p.currentTime = pos * p.duration;
+      const dur = (p.duration && !isNaN(p.duration)) ? p.duration : selectedDuration;
+      const previewTime = pos * dur;
+      const curStr = formatTime(previewTime);
+      if (playerCurrentTime && curStr !== lastFormattedCur) {
+        lastFormattedCur = curStr;
+        playerCurrentTime.textContent = curStr;
+      }
+    };
+
+    const commitScrubSeek = (pos) => {
+      const p = getActiveAudioPlayer();
+      if (p.duration && !isNaN(p.duration)) {
+        const targetTime = Math.max(0, Math.min(p.duration, pos * p.duration));
+        p.currentTime = targetTime;
+        lastAudioTime = targetTime;
+        lastSyncTimestamp = performance.now();
         if (balanceValue > 0 && balanceValue < 100) {
           const other = (p === sourceAudioPlayer) ? resultAudioPlayer : sourceAudioPlayer;
-          other.currentTime = p.currentTime;
+          other.currentTime = targetTime;
         }
       }
-      if (playerSliderFill) playerSliderFill.style.width = `${pos * 100}%`;
-      if (playerSliderThumb) playerSliderThumb.style.left = `${pos * 100}%`;
+      updatePlayheadRAF();
     };
 
     playerSliderTrack.addEventListener('pointerdown', (e) => {
       isScrubbing = true;
-      playerSliderTrack.setPointerCapture(e.pointerId);
-      handleScrubSeek(e);
+      try { playerSliderTrack.setPointerCapture(e.pointerId); } catch (err) {}
+      const rect = playerSliderTrack.getBoundingClientRect();
+      pendingScrubPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      updateScrubVisuals(pendingScrubPos);
     });
 
     playerSliderTrack.addEventListener('pointermove', (e) => {
-      if (isScrubbing) handleScrubSeek(e);
+      if (isScrubbing) {
+        const rect = playerSliderTrack.getBoundingClientRect();
+        pendingScrubPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        updateScrubVisuals(pendingScrubPos);
+      }
     });
 
     playerSliderTrack.addEventListener('pointerup', (e) => {
       if (isScrubbing) {
         isScrubbing = false;
         try { playerSliderTrack.releasePointerCapture(e.pointerId); } catch (err) {}
+        commitScrubSeek(pendingScrubPos);
       }
     });
 
     playerSliderTrack.addEventListener('pointercancel', (e) => {
-      isScrubbing = false;
-      try { playerSliderTrack.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (isScrubbing) {
+        isScrubbing = false;
+        try { playerSliderTrack.releasePointerCapture(e.pointerId); } catch (err) {}
+        commitScrubSeek(pendingScrubPos);
+      }
     });
   }
 
@@ -2038,16 +2224,21 @@
     });
   }
 
-  // 9. Waveform Canvas Drawing
-  async function drawWaveformFromUrl(url, canvas, color) {
-    if (!canvas) return;
-    try {
-      const response = await fetch(buildUrl(url));
-      const arrayBuffer = await response.arrayBuffer();
-      const ctx = getDecodeAudioContext();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  // 9. Waveform Canvas Drawing with In-Memory Cache (Zero CPU Decode Stalls)
+  const waveformCache = new Map();
 
-      const channelData = audioBuffer.getChannelData(0);
+  async function drawWaveformFromUrl(url, canvas, color) {
+    if (!canvas || !url) return;
+    try {
+      let channelData = waveformCache.get(url);
+      if (!channelData) {
+        const response = await fetch(buildUrl(url));
+        const arrayBuffer = await response.arrayBuffer();
+        const ctx = getDecodeAudioContext();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        channelData = audioBuffer.getChannelData(0);
+        waveformCache.set(url, channelData);
+      }
       drawWaveform(channelData, canvas, color);
     } catch (err) {
       console.warn("Waveform decode note:", err);
@@ -2197,3 +2388,4 @@
   } catch (e) {}
 
 })();
+

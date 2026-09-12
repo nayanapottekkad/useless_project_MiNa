@@ -364,9 +364,12 @@ def render_candidate_composition(
                 mix[0, :tl] += tag_chunk * tag_level
                 mix[1, :tl] += tag_chunk * tag_level
 
+    # Classic vocal fusion (e.g. Lady Gaga & RedOne pop archetype from db0ee3d):
+    is_classic_vocal = bool(getattr(artist_profile, 'special_flags', {}).get("classic_vocal_fusion", False)) and (vocal_mode in ("auto", "classic", "off"))
+
     # --- STEM 1: ATMOSPHERIC SOURCE BED (With Tempo-Synced Sidechain Pumping) ---
-    # In Lead Vocal Mode: use purely non-vocal ambience/drones so the lead voice is never whispered/pumped in the background!
-    if is_lead_vocal_mode:
+    # In Lead Vocal Mode: use purely non-vocal ambience/drones unless classic vocal fusion is active!
+    if is_lead_vocal_mode and not is_classic_vocal:
         non_vocal = [s for s in (palette.ambience + palette.drones + palette.textures) if getattr(s, "role", "") not in ("VOCAL_PHRASE", "VOCAL_CHOP")]
         bed_source_slices = non_vocal if non_vocal else (palette.ambience or palette.drones)
     else:
@@ -397,7 +400,10 @@ def render_candidate_composition(
         # Bed must be a subtle, warm background texture (gain: 0.03 to 0.055), NEVER a loud roaring traffic wash!
         # In drops/choruses (high energy), dip the bed lower so the musical drop hits with maximum punch!
         is_high_energy = sec.energy_level > 0.80 or "Chorus" in sec.name or "Drop" in sec.name or "Climax" in sec.name
-        if pref != "none":
+        if is_classic_vocal:
+            # Classic vocal fusion from db0ee3d: words and speech remain prominent, clear and fun in the bed
+            base_bed = 0.45 if not is_high_energy else 0.55
+        elif pref != "none":
             base_bed = 0.030 if is_high_energy else 0.050
         else:
             base_bed = 0.10 if is_high_energy else 0.15
@@ -1195,7 +1201,17 @@ def render_candidate_composition(
                 is_intro_outro = bool(sec and ("Intro" in sec.name or "Outro" in sec.name or "Hook" in sec.name and "Chorus" not in sec.name))
                 cur_lead = (intro_lead if (intro_lead and is_intro_outro) else lead_style)
 
-                if cur_lead == "karplus":
+                if is_classic_vocal:
+                    # Classic physical voice-resonated hook: excite directly from full source recording across random windows
+                    note_audio = render_noise_instrument_note(
+                        source_audio=prep.mono,
+                        freq=event.freq_hz,
+                        duration=event.duration,
+                        velocity=event.velocity * sec.energy_level * 0.88,
+                        style=cur_lead,
+                        sr=sr
+                    )
+                elif cur_lead == "karplus":
                     note_audio = render_karplus_strong_noise_note(
                         source_grain=cur_grain,
                         freq=event.freq_hz,
@@ -1277,6 +1293,9 @@ def render_candidate_composition(
         or (is_vocal_source and bool(getattr(palette, 'vocal_chops', [])))
         or has_source_horn_stabs
     )
+    if is_classic_vocal:
+        # Voice is already integrated into the pumping bed, melody, and stutters like in db0ee3d!
+        has_vocal_content = False
 
     if has_vocal_content:
         if use_lead_vocal_take and not force_chops_mode:
@@ -1547,7 +1566,13 @@ def render_candidate_composition(
     else:
         bed_desc = "Atmospheric Source Recording Bed (Rhythmic Pumped)"
 
-    if not has_vocal_content:
+    if is_classic_vocal:
+        vocal_desc = "Classic Electro-Pop Vocal Fusion (Speech/words integrated into rhythmic bed, lead hook & chops)"
+        drum_desc = "Four-on-the-Floor Kick, Pop Claps, Disco Open Hats & Timbaland Source Stutters"
+        bass_desc = "Rolling 16th-Note Electro-Pop Synth Bassline (Poker Face & Promiscuous Style)"
+        lead_desc = f"Anthemic Pop Earworm Lead Hook ({lead_name})"
+        bed_desc = "Pumping Spoken Voice & Atmospheric Bed (122 BPM Sidechained)"
+    elif not has_vocal_content:
         vocal_desc = "Pure Instrumental Arrangement (Source transformed to Chords, Bass & Drums)"
     elif has_source_horn_stabs:
         vocal_desc = f"Scale Auto-Tuned Traffic Horn Stabs ({scale.name}) — Transformed City Brass Hook"

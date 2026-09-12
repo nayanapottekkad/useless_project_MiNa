@@ -1,4 +1,4 @@
-"""
+﻿"""
 Procedural Sound Synthesis Engine for TheUnnecessaryFM
 Pure mathematical synthesis without external audio files or neural models.
 Provides:
@@ -478,34 +478,52 @@ def render_lady_gaga_supersaw(
     sr: int = 44100
 ) -> np.ndarray:
     """
-    LADY GAGA / REDONE SUPERSAW PLUCK ("Poker Face", "Bad Romance"):
-    - 7-voice detuned saw stack (detune: -14 to +14 cents).
-    - Exponential lowpass sweep: f_cutoff(t) = 350 + 4200 * exp(-t / 0.18) Hz.
-    - Soft saturation tanh(1.8 * x), Q ~ 5.0 at cutoff for pluck bite.
+    LADY GAGA / REDONE ELECTRO PLUCK ("Poker Face", "Bad Romance"):
+    Authentic physical vocal/noise resonator from classic release:
+    - Resonates fundamental f0, 2nd harmonic f2, and 3rd harmonic f3 directly from the voice/noise.
+    - 15% raw noise texture retention + analog saturation tanh(1.6x).
+    - Tight electro envelope with subtle sub-support and bright presence.
     """
     total_samples = max(64, int(duration * sr))
     t = np.linspace(0, duration, total_samples, endpoint=False, dtype=np.float32)
 
-    detune_cents = [-14.0, -8.0, -3.0, 0.0, 3.0, 8.0, 14.0]
-    weights = [0.10, 0.14, 0.18, 0.22, 0.18, 0.14, 0.10]
-    stack = np.zeros(total_samples, dtype=np.float32)
-    for c, w in zip(detune_cents, weights):
-        f_v = float(np.clip(freq * (2.0 ** (c / 1200.0)), 20.0, sr * 0.45))
-        stack += saw_wave(f_v, duration, sr=sr) * w
+    # 1. Physical multi-harmonic resonance bank on input noise/voice
+    freq = float(np.clip(freq, 40.0, sr * 0.45))
+    bw = freq / 22.0
+    f_low = max(20.0, freq - bw * 0.5)
+    f_high = min(sr * 0.48, freq + bw * 0.5)
+    b, a = signal.butter(2, [f_low / (sr * 0.5), f_high / (sr * 0.5)], btype='bandpass')
+    resonated_f0 = signal.lfilter(b, a, noise_chunk)
 
-    block_s = max(16, int(0.005 * sr))
-    filtered_stack = np.zeros_like(stack)
-    for i in range(0, total_samples, block_s):
-        end_i = min(total_samples, i + block_s)
-        t_mid = (i + end_i) * 0.5 / sr
-        f_cut = float(np.clip(350.0 + 4200.0 * np.exp(-t_mid / 0.18), 300.0, sr * 0.46))
-        b, a = signal.butter(2, min(0.48, f_cut / (sr * 0.5)), btype='low')
-        filtered_stack[i:end_i] = signal.lfilter(b, a, stack[i:end_i])
+    f2 = min(sr * 0.45, freq * 2.0)
+    bw2 = f2 / 20.0
+    b2, a2 = signal.butter(1, [max(20.0, f2 - bw2 * 0.5) / (sr * 0.5), min(sr * 0.48, f2 + bw2 * 0.5) / (sr * 0.5)], btype='bandpass')
+    resonated_f2 = signal.lfilter(b2, a2, noise_chunk)
 
-    res_noise = biquad_modal_resonator(noise_chunk, freq, q=32.0, sr=sr)
-    env = adsr_envelope(duration, attack=0.004, decay=min(0.28, duration * 0.7), sustain=0.25, release=0.08, sr=sr)
-    combined = (filtered_stack * 0.75 + res_noise * 0.35) * env
-    return np.tanh(combined * 1.8).astype(np.float32)
+    f3 = min(sr * 0.45, freq * 3.0)
+    bw3 = f3 / 18.0
+    b3, a3 = signal.butter(1, [max(20.0, f3 - bw3 * 0.5) / (sr * 0.5), min(sr * 0.48, f3 + bw3 * 0.5) / (sr * 0.5)], btype='bandpass')
+    resonated_f3 = signal.lfilter(b3, a3, noise_chunk)
+
+    tonal_noise = (resonated_f0 * 18.0 + resonated_f2 * 10.0 + resonated_f3 * 4.0)
+    textured_note = tonal_noise * 0.85 + noise_chunk * 0.15
+    saturated_body = np.tanh(textured_note * 1.6)
+
+    # 2. Fast snappy punch envelope + 15% sub fundamental support
+    env = adsr_envelope(duration, attack=0.004, decay=min(0.32, duration * 0.65), sustain=0.20, release=0.08, sr=sr)
+    sub_support = 0.15 * np.sin(2.0 * np.pi * freq * t)
+
+    # 3. Subtle wide saw bite layer (18% mix) for electro sheen
+    f_v1 = float(np.clip(freq * (2.0 ** (-6.0 / 1200.0)), 20.0, sr * 0.45))
+    f_v2 = float(np.clip(freq * (2.0 ** (6.0 / 1200.0)), 20.0, sr * 0.45))
+    saw_layer = (saw_wave(f_v1, duration, sr=sr) + saw_wave(f_v2, duration, sr=sr)) * 0.5
+    # Static scalar lowpass for electro sheen (3500 Hz bright cut - avoids array-to-scalar error)
+    f_cut_scalar = float(np.clip(3500.0, 300.0, sr * 0.46))
+    b_s, a_s = signal.butter(1, min(0.48, f_cut_scalar / (sr * 0.5)), btype='low')
+    saw_filtered = signal.lfilter(b_s, a_s, saw_layer)
+
+    rendered = (saturated_body * 0.82 + saw_filtered * 0.18 + sub_support * 0.15) * env
+    return np.tanh(rendered * 1.4).astype(np.float32)
 
 
 def render_mj_horn_stab(
@@ -1156,6 +1174,8 @@ def render_noise_instrument_note(
     else:
         if start_offset is not None and len(source_audio) > total_samples:
             start = start_offset % (len(source_audio) - total_samples + 1)
+        elif len(source_audio) > total_samples:
+            start = int(np.random.randint(0, len(source_audio) - total_samples + 1))
         else:
             start = 0
         noise_chunk = source_audio[start:start + total_samples].copy()
@@ -2023,3 +2043,4 @@ def render_noise_downlifter(slice_audio: np.ndarray, duration: float = 1.8, sr: 
         downlifter = (downlifter / pk) * 0.78
 
     return apply_fade(downlifter.astype(np.float32), fade_samples=64)
+

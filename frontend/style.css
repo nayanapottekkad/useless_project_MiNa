@@ -3038,7 +3038,8 @@ body {
   background-color: var(--spotify-green);
   box-shadow: none;
   pointer-events: none;
-  transition: transform 0.05s linear;
+  transition: none !important;
+  transform: translateZ(0);
 }
 
 .wf-actions {
@@ -4942,4 +4943,110 @@ body {
 
 .player-slider-fill, .player-slider-thumb {
   will-change: width, left;
-}
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   EXPLORE / ONBOARDING TIP ELEMENTS
+   ────────────────────────────────────────────────────────────────── */
+
+/* Rotating dismissable tip banner below the studio section heading */
+.explore-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(100deg, rgba(139,92,246,0.13) 0%, rgba(236,72,153,0.09) 100%);
+  border: 1px solid rgba(139,92,246,0.28);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #b3b3b3);
+  animation: tipBannerFadeIn 0.5s ease both;
+  transition: opacity 0.35s ease, max-height 0.35s ease;
+  overflow: hidden;
+  max-height: 80px;
+}
+
+.explore-tip-banner.dismissed {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  pointer-events: none;
+}
+
+.explore-tip-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  animation: tipIconBounce 2.4s ease-in-out infinite;
+}
+
+.explore-tip-text {
+  flex: 1;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.80);
+  transition: opacity 0.25s ease;
+}
+
+.explore-tip-text.fading {
+  opacity: 0;
+}
+
+.explore-tip-dismiss {
+  flex-shrink: 0;
+  background: rgba(139,92,246,0.22);
+  border: 1px solid rgba(139,92,246,0.40);
+  border-radius: 20px;
+  color: #c4b5fd;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.explore-tip-dismiss:hover {
+  background: rgba(139,92,246,0.45);
+  color: #fff;
+}
+
+@keyframes tipBannerFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tipIconBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+/* Small nudge line under the style archetype helper note */
+.style-explore-nudge {
+  display: block;
+  font-size: 0.75rem;
+  color: #a78bfa;
+  margin-top: 4px;
+  letter-spacing: 0.01em;
+  opacity: 0.85;
+  animation: nudgePulse 3.5s ease-in-out infinite;
+}
+
+@keyframes nudgePulse {
+  0%, 100% { opacity: 0.70; }
+  50%       { opacity: 1; }
+}
+
+/* Rotating exploration hint line below the Create Music button */
+.disclaimer-explore-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.75rem;
+  color: #86efac;
+  opacity: 0.82;
+  letter-spacing: 0.01em;
+  animation: nudgePulse 4s ease-in-out infinite;
+  animation-delay: 1.2s;
+}

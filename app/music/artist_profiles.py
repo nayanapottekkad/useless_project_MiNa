@@ -1,4 +1,4 @@
-"""
+﻿"""
 Iconic Artist Style Profiles Registry for TheUnnecessaryFM
 Defines authentic production archetypes across 7 genres with exact BPM ranges,
 musical scales, drum groove types, micro-timing humanization, bass architectures,
@@ -71,8 +71,8 @@ FLOW_ASSIGNMENTS: Dict[str, Tuple[str, str]] = {
 # Client-Facing Aesthetic Sonic Archetype Names & Vibes
 STYLE_DISPLAY_METADATA: Dict[str, Tuple[str, str]] = {
     # Pop & Nu-Disco
-    "usher_liljon_crunk": ("Crunk Club Siren Riff", "Aggressive siren synth with heavy 808 sub hits"),
     "ladygaga_redone_electro": ("Electro-Pop Supersaw", "Driving four-on-the-floor electro with wide supersaws"),
+    "usher_liljon_crunk": ("Crunk Club Siren Riff", "Aggressive siren synth with heavy 808 sub hits"),
     "mj_quincy_popfunk": ("80s Pop Synth Ostinato", "Walking 8th ostinato bass & sparkling FM electric piano"),
     "weeknd_maxmartin_synthwave": ("Neon 80s Synthwave", "Arpeggiated driving pulse with lush Juno chorus leads"),
     "dualipa_nudisco": ("Nu-Disco Club Pump", "16th-note root-octave disco pump & percussive clavinet"),
@@ -130,6 +130,30 @@ STYLE_DISPLAY_METADATA: Dict[str, Tuple[str, str]] = {
 
 ARTIST_PROFILES: Dict[str, ArtistProfile] = {
     # ── 1. GENRE: POP ─────────────────────────────────────────────────────────
+    "ladygaga_redone_electro": ArtistProfile(
+        id="ladygaga_redone_electro",
+        name="Lady Gaga & RedOne (Electro-Pop)",
+        track_title_hint="Poker Face / Bad Romance",
+        genre="pop",
+        bpm_default=124.0,
+        bpm_min=118.0,
+        bpm_max=126.0,
+        preferred_scales=["harmonic_minor", "natural_minor"],
+        progression_pool=[[6, 4, 1, 5], [1, 6, 3, 7]],
+        groove_type="pop_four_floor",
+        lead_style="lady_gaga_supersaw",
+        bass_style="saw_pluck",
+        humanize_timing_ms=0.0,
+        lead_reverb=(0.70, 0.24),
+        lead_delay=(0.5, 0.28, 0.24),  # 8th-note stereo ping-pong bounce
+        chord_q=16.0,
+        chord_reverb=(0.65, 0.20),
+        bed_gain_mul=0.68,
+        melody_mix=0.98,
+        chord_mix=0.88,
+        bass_mix=0.98,
+        special_flags={"euro_pop_hat": True, "classic_vocal_fusion": True}
+    ),
     "usher_liljon_crunk": ArtistProfile(
         id="usher_liljon_crunk",
         name="Usher & Lil Jon (Crunk Club)",
@@ -153,30 +177,6 @@ ARTIST_PROFILES: Dict[str, ArtistProfile] = {
         chord_mix=0.80,
         bass_mix=1.15,  # Sub-heavy 808
         special_flags={"crunk_rigid": True}
-    ),
-    "ladygaga_redone_electro": ArtistProfile(
-        id="ladygaga_redone_electro",
-        name="Lady Gaga & RedOne (Electro-Pop)",
-        track_title_hint="Poker Face / Bad Romance",
-        genre="pop",
-        bpm_default=124.0,
-        bpm_min=118.0,
-        bpm_max=126.0,
-        preferred_scales=["harmonic_minor", "natural_minor"],
-        progression_pool=[[6, 4, 1, 5], [1, 6, 3, 7]],
-        groove_type="pop_four_floor",
-        lead_style="lady_gaga_supersaw",
-        bass_style="saw_pluck",
-        humanize_timing_ms=0.0,
-        lead_reverb=(0.70, 0.24),
-        lead_delay=(0.5, 0.28, 0.24),  # 8th-note stereo ping-pong bounce
-        chord_q=16.0,
-        chord_reverb=(0.65, 0.20),
-        bed_gain_mul=0.65,
-        melody_mix=0.98,
-        chord_mix=0.88,
-        bass_mix=0.98,
-        special_flags={"euro_pop_hat": True}
     ),
     "mj_quincy_popfunk": ArtistProfile(
         id="mj_quincy_popfunk",
@@ -1121,6 +1121,18 @@ def get_random_artist_for_genre(
         # All artists for this genre have been played! Reset the cycle.
         available = all_artists
         cycle_reset = True
+
+    # Hard rule: For Pop auto-cycling, Electro-Pop Supersaw always plays first
+    # (i.e. when it has not yet been played/excluded in the current cycle).
+    # This ensures a consistent "wow" first impression regardless of prior session history.
+    if not preferred_artist_id and (genre or "pop").lower().strip() in ("pop", "vocal_fusion"):
+        supersaw = next((a for a in available if a.id == "ladygaga_redone_electro"), None)
+        if supersaw is not None:
+            return supersaw, cycle_reset
+
+    if not preferred_artist_id and not exclude_artist_ids and available:
+        # Default first roll for other genres returns the signature flagship archetype
+        return available[0], False
 
     if rng is None:
         idx = int(np.random.randint(0, len(available)))
